@@ -8,6 +8,26 @@ import './App.css';
 // Order of materials in Three.js BoxGeometry: [Right (X+), Left (X-), Top (Y+), Bottom (Y-), Front (Z+), Back (Z-)]
 const FACE_COLORS = ['red', 'orange', 'white', 'yellow', 'green', 'blue'];
 
+// Global directions we want to check for each of the 6 faces
+const GLOBAL_DIRECTIONS = {
+  U: new THREE.Vector3(0, 1, 0),   // Up (White face originally)
+  D: new THREE.Vector3(0, -1, 0),  // Down (Yellow face originally)
+  R: new THREE.Vector3(1, 0, 0),   // Right (Red face originally)
+  L: new THREE.Vector3(-1, 0, 0),  // Left (Orange face originally)
+  F: new THREE.Vector3(0, 0, 1),   // Front (Green face originally)
+  B: new THREE.Vector3(0, 0, -1),  // Back (Blue face originally)
+};
+
+// Local normals of a single cubie pointing to its 6 faces
+const LOCAL_NORMALS = [
+  new THREE.Vector3(1, 0, 0),   // Index 0: Right (Red)
+  new THREE.Vector3(-1, 0, 0),  // Index 1: Left (Orange)
+  new THREE.Vector3(0, 1, 0),   // Index 2: Top (White)
+  new THREE.Vector3(0, -1, 0),  // Index 3: Bottom (Yellow)
+  new THREE.Vector3(0, 0, 1),   // Index 4: Front (Green)
+  new THREE.Vector3(0, 0, -1),  // Index 5: Back (Blue)
+];
+
 // Cubie component using a Transformation Matrix
 function Cubie({ matrix }) {
   const meshRef = React.useRef();
@@ -137,19 +157,54 @@ export default function App() {
     setCubies(generateSolvedCube());
   };
 
-  // Debug function to log current cubie positions (Step towards state exporting)
+  // Modern state reader converting 3D matrix rotations into 2D color representation
   const logCubeState = () => {
-    console.log("CURRENT CUBE LOGICAL POSITIONS");
+    const faceStates = { U: [], D: [], R: [], L: [], F: [], B: [] };
+
+    // Group cubies that belong to each of the 6 physical faces
     cubies.forEach((cubie) => {
       const currentPos = new THREE.Vector3();
       currentPos.setFromMatrixPosition(cubie.matrix);
-      // Rounding to avoid floating-point errors (e.g. -0.0000001 -> 0)
-      const x = Math.round(currentPos.x);
-      const y = Math.round(currentPos.y);
-      const z = Math.round(currentPos.z);
-      console.log(`Cubie ID: ${cubie.id} is currently at physical 3D space: [${x}, ${y}, ${z}]`);
-    })
-  }
+
+      // Extract rotation part of the transformation matrix
+      const rotationMatrix = new THREE.Matrix3().setFromMatrix4(cubie.matrix);
+
+      // 1. Check which global faces this cubie belongs to
+      if (Math.abs(currentPos.y - 1) < 0.1) faceStates.U.push({ pos: currentPos.clone(), rot: rotationMatrix });
+      if (Math.abs(currentPos.y - (-1)) < 0.1) faceStates.D.push({ pos: currentPos.clone(), rot: rotationMatrix });
+      if (Math.abs(currentPos.x - 1) < 0.1) faceStates.R.push({ pos: currentPos.clone(), rot: rotationMatrix });
+      if (Math.abs(currentPos.x - (-1)) < 0.1) faceStates.L.push({ pos: currentPos.clone(), rot: rotationMatrix });
+      if (Math.abs(currentPos.z - 1) < 0.1) faceStates.F.push({ pos: currentPos.clone(), rot: rotationMatrix });
+      if (Math.abs(currentPos.z - (-1)) < 0.1) faceStates.B.push({ pos: currentPos.clone(), rot: rotationMatrix });
+    });
+
+    console.clear();
+    console.log("%c--- 3D TO 2D CUBE COLOR MAPPER ---", "color: #00d2ff; font-weight: bold;");
+
+    // Helper to find the color facing a specific global direction
+    const getFaceColor = (cubieRot, globalDir) => {
+      let bestMatchIndex = 0;
+      let maxDotProduct = -Infinity;
+
+      LOCAL_NORMALS.forEach((localNormal, index) => {
+        // Rotate the local normal using the cubie's current rotation matrix
+        const rotatedNormal = localNormal.clone().applyMatrix3(cubieRot);
+        // The Dot Product measures how parallel two vectors are (1 = identical direction)
+        const dot = rotatedNormal.dot(globalDir);
+
+        if (dot > maxDotProduct) {
+          maxDotProduct = dot;
+          bestMatchIndex = index;
+        }
+      });
+
+      return FACE_COLORS[bestMatchIndex];
+    };
+
+    // Log the colors for the Up (U) face as a quick demo
+    const upFaceColors = faceStates.U.map(cubie => getFaceColor(cubie.rot, GLOBAL_DIRECTIONS.U));
+    console.log("UP Face Colors (Y=1):", upFaceColors);
+  };
 
   return (
     <div className='app-container'>
@@ -183,7 +238,7 @@ export default function App() {
             Log State
           </button>
         </div>
-        
+
         <div className="button-grid">
           {moves.map((move) => (
             <button 
