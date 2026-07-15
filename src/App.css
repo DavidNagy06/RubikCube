@@ -63,3 +63,45 @@
 .control-btn:active {
   transform: translateY(1px);
 }
+
+/* Scramble Button Specific Styles */
+.scramble-btn {
+  width: 100%;
+  padding: 12px;
+  margin-bottom: 15px;
+  font-size: 15px;
+  font-weight: bold;
+  color: #1a1a1a;
+  background-color: #00d2ff;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+  box-shadow: 0 4px 10px rgba(0, 210, 255, 0.3);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.scramble-btn:hover:not(:disabled) {
+  background-color: #00b4db;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 15px rgba(0, 210, 255, 0.5);
+}
+
+.scramble-btn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.scramble-btn:disabled {
+  background-color: #555555;
+  color: #888888;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* Update control-btn to look disabled when scrambling */
+.control-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none !important;
+}

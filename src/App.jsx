@@ -54,6 +54,23 @@ export default function App() {
   }
 
   const [cubies, setCubies] = useState(initialCubies);
+  const [isScrambling, setIsScrambling] = useState(false);
+
+  // Define all official Rubik's Cube moves
+  const moves = [
+    { name: 'U', axis: 'y', layer: 1, angle: -Math.PI / 2 },
+    { name: "U'", axis: 'y', layer: 1, angle: Math.PI / 2 },
+    { name: 'D', axis: 'y', layer: -1, angle: Math.PI / 2 },
+    { name: "D'", axis: 'y', layer: -1, angle: -Math.PI / 2 },
+    { name: 'R', axis: 'x', layer: 1, angle: -Math.PI / 2 },
+    { name: "R'", axis: 'x', layer: 1, angle: Math.PI / 2 },
+    { name: 'L', axis: 'x', layer: -1, angle: Math.PI / 2 },
+    { name: "L'", axis: 'x', layer: -1, angle: -Math.PI / 2 },
+    { name: 'F', axis: 'z', layer: 1, angle: -Math.PI / 2 },
+    { name: "F'", axis: 'z', layer: 1, angle: Math.PI / 2 },
+    { name: 'B', axis: 'z', layer: -1, angle: Math.PI / 2 },
+    { name: "B'", axis: 'z', layer: -1, angle: -Math.PI / 2 },
+  ];
 
   // Rotate a specific layer around an axis
   const rotateLayer = (axis, layerValue, angle) => {
@@ -90,32 +107,51 @@ export default function App() {
     );
   };
 
-  const moves = [
-    { name: 'U', axis: 'y', layer: 1, angle: -Math.PI / 2 },
-    { name: "U'", axis: 'y', layer: 1, angle: Math.PI / 2 },
-    { name: 'D', axis: 'y', layer: -1, angle: Math.PI / 2 },
-    { name: "D'", axis: 'y', layer: -1, angle: -Math.PI / 2 },
-    { name: 'R', axis: 'x', layer: 1, angle: -Math.PI / 2 },
-    { name: "R'", axis: 'x', layer: 1, angle: Math.PI / 2 },
-    { name: 'L', axis: 'x', layer: -1, angle: Math.PI / 2 },
-    { name: "L'", axis: 'x', layer: -1, angle: -Math.PI / 2 },
-    { name: 'F', axis: 'z', layer: 1, angle: -Math.PI / 2 },
-    { name: "F'", axis: 'z', layer: 1, angle: Math.PI / 2 },
-    { name: 'B', axis: 'z', layer: -1, angle: Math.PI / 2 },
-    { name: "B'", axis: 'z', layer: -1, angle: -Math.PI / 2 },
-  ];
+  // Function to scramble the cube with a sequence of random moves
+  const scrambleCube = () => {
+    if (isScrambling) return; // Prevent multiple scramble triggers
+    setIsScrambling(true);
+
+    const scrambleLength = 20; // Standard scramble length
+    let currentStep = 0;
+
+    const interval = setInterval(() => {
+      if (currentStep >= scrambleLength) {
+        clearInterval(interval);
+        setIsScrambling(false);
+        return;
+      }
+
+      // Pick a random move from our moves array
+      const randomMove = moves[Math.floor(Math.random() * moves.length)];
+      rotateLayer(randomMove.axis, randomMove.layer, randomMove.angle);
+
+      currentStep++;
+    }, 150); // Delay between moves in milliseconds
+  };
 
   return (
     <div className='app-container'>
       {/* Dynamic control panel */}
       <div className="controls-container">
         <h3 className="controls-title">Controls</h3>
+
+        {/* Scramble Button */}
+        <button
+          className='scramble-btn'
+          onClick={scrambleCube}
+          disabled={isScrambling}
+        >
+          {isScrambling ? 'Scrambling...' : 'Scramble Cube'}
+        </button>
+
         <div className="button-grid">
           {moves.map((move) => (
             <button 
               key={move.name}
               className="control-btn"
               onClick={() => rotateLayer(move.axis, move.layer, move.angle)}
+              disabled={isScrambling} // Disable manual moves during scramble
             >
               {move.name}
             </button>
