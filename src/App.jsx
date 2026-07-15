@@ -1,15 +1,27 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
+import * as THREE from 'three';
+import './App.css';
 
 // Define the 6 standard colors of a Rubik's Cube
 // Order of materials in Three.js BoxGeometry: [Right (X+), Left (X-), Top (Y+), Bottom (Y-), Front (Z+), Back (Z-)]
 const FACE_COLORS = ['red', 'orange', 'white', 'yellow', 'green', 'blue'];
 
-// Individual Cubie component
-function Cubie({ position, rotation }) {
+// Cubie component using a Transformation Matrix
+function Cubie({ matrix }) {
+  const meshRef = React.useRef();
+
+  // Apply the 3D transformation matrix directly to the mesh on every render
+  React.useEffect(() => {
+    if (meshRef.current) {
+      meshRef.current.matrix.copy(matrix);
+      meshRef.current.matrixAutoUpdate = false; // Tell Three.js we handle the matrix manually
+    }
+  }, [matrix]);
+
   return (
-    <mesh position={position} rotation={rotation}>
+    <mesh ref={meshRef}>
       <boxGeometry args={[0.95, 0.95, 0.95]} />
       {FACE_COLORS.map((color, index) => (
         <meshStandardMaterial 
@@ -24,17 +36,18 @@ function Cubie({ position, rotation }) {
 }
 
 export default function App() {
-  // Generate initial state for 27 cubies
+  // Generate initial state with 3D transformation matrices
   const initialCubies = [];
   for (let x = -1; x <= 1; x++) {
     for (let y = -1; y <= 1; y++) {
       for (let z = -1; z <= 1; z++) {
+        const matrix = new THREE.Matrix4();
+        // Set the initial translation (position) of the cubie
+        matrix.makeTranslation(x, y, z);
+
         initialCubies.push({
           id: `${x}-${y}-${z}`,
-          // Current logical coordinate in 3D space
-          pos: [x, y, z],
-          // Current rotation of the cubie (Euler angles in radians)
-          rot: [0, 0, 0],
+          matrix: matrix,
         });
       }
     }
@@ -42,56 +55,56 @@ export default function App() {
 
   const [cubies, setCubies] = useState(initialCubies);
 
-  // Function to rotate the TOP face (Y = 1) clockwise by 90 degrees (PI / 2 radians)
-  const rotateTopFace = () => {
+  // Rotate a specific layer around an axis
+  const rotateLayer = (axis, layerValue, angle) => {
     setCubies((prevCubies) =>
       prevCubies.map((cubie) => {
-        const [x, y, z] = cubie.pos;
+        // Extract current position from the cubie's matrix
+        const currentPos = new THREE.Vector3();
+        currentPos.setFromMatrixPosition(cubie.matrix);
 
-        // Check if the cubie is part of the TOP layer (Y coordinate is 1)
-        if (y === 1) {
-          // 2D Rotation matrix formula for 90 degrees clockwise on the XZ plane:
-          // newX = -z
-          // newZ = x
-          const newX = -z;
-          const newY = y; // Y stays the same during Y-axis rotation
-          const newZ = x;
-
-          // Update the cubie's individual rotation state
-          const [rotX, rotY, rotZ] = cubie.rot;
+        // Check if the cubie belongs to the target layer (with tolerance for floating-point errors)
+        const currentCoordOnAxis = currentPos[axis];
+        if (Math.abs(currentCoordOnAxis - layerValue) < 0.1) {
           
+          // Create rotation matrix around the specified axis
+          const rotationMatrix = new THREE.Matrix4();
+          if (axis === 'y') rotationMatrix.makeRotationY(angle);
+          if (axis === 'x') rotationMatrix.makeRotationX(angle);
+          if (axis === 'z') rotationMatrix.makeRotationZ(angle);
+
+          // Clone the existing matrix to avoid mutating state directly
+          const newMatrix = cubie.matrix.clone();
+          
+          // To rotate around the world center (0,0,0), we pre-multiply the rotation
+          newMatrix.premultiply(rotationMatrix);
+
           return {
             ...cubie,
-            pos: [newX, newY, newZ],
-            // We rotate around the Y axis by -90 degrees (-PI / 2) for clockwise
-            rot: [rotX, rotY - Math.PI / 2, rotZ],
+            matrix: newMatrix,
           };
         }
-        
-        // If it's not on the top layer, leave it unchanged
+
         return cubie;
       })
     );
   };
 
   return (
-    <div style={{ width: '100vw', height: '100vh', position: 'relative' }}>
-      {/* UI Overlay for controls */}
-      <div style={{ position: 'absolute', top: 20, left: 20, zIndex: 10 }}>
+    <div className="app-container">
+      {/* Cleaned control overlay using CSS classes */}
+      <div className="controls-container">
         <button 
-          onClick={rotateTopFace}
-          style={{
-            padding: '10px 20px',
-            fontSize: '16px',
-            cursor: 'pointer',
-            backgroundColor: '#007bff',
-            color: 'white',
-            border: 'none',
-            borderRadius: '5px',
-            fontWeight: 'bold'
-          }}
+          className="control-btn"
+          onClick={() => rotateLayer('y', 1, -Math.PI / 2)} // Rotate U (Up) Clockwise
         >
-          Rotate Top Face (U)
+          U (Top Clockwise)
+        </button>
+        <button 
+          className="control-btn"
+          onClick={() => rotateLayer('y', 1, Math.PI / 2)} // Rotate U' (Up Counter-Clockwise)
+        >
+          U' (Top Counter-Clockwise)
         </button>
       </div>
 
@@ -100,10 +113,9 @@ export default function App() {
         <directionalLight position={[10, 10, 10]} intensity={1.5} />
         <directionalLight position={[-10, -10, -10]} intensity={0.5} />
 
-        {/* Render the cubies from state */}
         <group>
           {cubies.map((cubie) => (
-            <Cubie key={cubie.id} position={cubie.pos} rotation={cubie.rot} />
+            <Cubie key={cubie.id} matrix={cubie.matrix} />
           ))}
         </group>
 
