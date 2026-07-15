@@ -93,6 +93,26 @@ export default function App() {
     { name: "B'", axis: 'z', layer: -1, angle: -Math.PI / 2 },
   ];
 
+  // Rotate the entire cube around an axis (Fixed version)
+  const rotateEntireCube = (axis, angle) => {
+    setCubies((prevCubies) =>
+      prevCubies.map((cubie) => {
+        const rotationMatrix = new THREE.Matrix4();
+        if (axis === 'y') rotationMatrix.makeRotationY(angle);
+        if (axis === 'x') rotationMatrix.makeRotationX(angle);
+        if (axis === 'z') rotationMatrix.makeRotationZ(angle);
+
+        const newMatrix = cubie.matrix.clone();
+        newMatrix.premultiply(rotationMatrix);
+
+        return {
+          ...cubie,
+          matrix: newMatrix,
+        };
+      })
+    );
+  };
+
   // Rotate a specific layer around an axis
   const rotateLayer = (axis, layerValue, angle) => {
     setCubies((prevCubies) =>
@@ -239,6 +259,33 @@ export default function App() {
           </button>
         </div>
 
+        {/* New section for entire cube rotations */}
+        <h4 className="section-title">Rotate Cube</h4>
+        <div className="utility-buttons">
+          <button 
+            className="utility-btn rotate-all-btn"
+            onClick={() => rotateEntireCube('y', Math.PI / 2)}
+            disabled={isScrambling}
+          >
+            Rotate Y
+          </button>
+          <button 
+            className="utility-btn rotate-all-btn"
+            onClick={() => rotateEntireCube('x', Math.PI / 2)}
+            disabled={isScrambling}
+          >
+            Rotate X
+          </button>
+          <button 
+            className="utility-btn rotate-all-btn"
+            onClick={() => rotateEntireCube('z', Math.PI / 2)}
+            disabled={isScrambling}
+          >
+            Rotate Z
+          </button>
+        </div>
+
+        <h4 className="section-title">Layer Moves</h4>
         <div className="button-grid">
           {moves.map((move) => (
             <button 

@@ -155,3 +155,27 @@
   cursor: not-allowed;
   box-shadow: none;
 }
+
+/* Section titles inside the control panel */
+.section-title {
+  margin-top: 15px;
+  margin-bottom: 8px;
+  font-size: 12px;
+  text-align: left;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #a0a0a0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding-bottom: 3px;
+}
+
+/* Rotate Entire Cube buttons */
+.rotate-all-btn {
+  background-color: #27ae60;
+  box-shadow: 0 4px 6px rgba(39, 174, 96, 0.2);
+}
+
+.rotate-all-btn:hover:not(:disabled) {
+  background-color: #2ecc71;
+  transform: translateY(-2px);
+}
