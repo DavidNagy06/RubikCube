@@ -36,24 +36,25 @@ function Cubie({ matrix }) {
 }
 
 export default function App() {
-  // Generate initial state with 3D transformation matrices
-  const initialCubies = [];
-  for (let x = -1; x <= 1; x++) {
-    for (let y = -1; y <= 1; y++) {
-      for (let z = -1; z <= 1; z++) {
-        const matrix = new THREE.Matrix4();
-        // Set the initial translation (position) of the cubie
-        matrix.makeTranslation(x, y, z);
-
-        initialCubies.push({
-          id: `${x}-${y}-${z}`,
-          matrix: matrix,
-        });
+  // Helper to generate a brand new, solved cube state
+  const generateSolvedCube = () => {
+    const solved = [];
+    for (let x = -1; x <= 1; x++) {
+      for (let y = -1; y <= 1; y++) {
+        for (let z = -1; z <= 1; z++) {
+          const matrix = new THREE.Matrix4();
+          matrix.makeTranslation(x, y, z);
+          solved.push({
+            id: `${x}-${y}-${z}`,
+            matrix: matrix,
+          });
+        }
       }
     }
-  }
+    return solved;
+  };
 
-  const [cubies, setCubies] = useState(initialCubies);
+  const [cubies, setCubies] = useState(generateSolvedCube);
   const [isScrambling, setIsScrambling] = useState(false);
 
   // Define all official Rubik's Cube moves
@@ -130,6 +131,26 @@ export default function App() {
     }, 150); // Delay between moves in milliseconds
   };
 
+  // Reset function to set the cube back to the solve state
+  const resetCube = () => {
+    if (isScrambling) return;
+    setCubies(generateSolvedCube());
+  };
+
+  // Debug function to log current cubie positions (Step towards state exporting)
+  const logCubeState = () => {
+    console.log("CURRENT CUBE LOGICAL POSITIONS");
+    cubies.forEach((cubie) => {
+      const currentPos = new THREE.Vector3();
+      currentPos.setFromMatrixPosition(cubie.matrix);
+      // Rounding to avoid floating-point errors (e.g. -0.0000001 -> 0)
+      const x = Math.round(currentPos.x);
+      const y = Math.round(currentPos.y);
+      const z = Math.round(currentPos.z);
+      console.log(`Cubie ID: ${cubie.id} is currently at physical 3D space: [${x}, ${y}, ${z}]`);
+    })
+  }
+
   return (
     <div className='app-container'>
       {/* Dynamic control panel */}
@@ -145,6 +166,24 @@ export default function App() {
           {isScrambling ? 'Scrambling...' : 'Scramble Cube'}
         </button>
 
+        {/* New utility buttons group */}
+        <div className="utility-buttons">
+          <button 
+            className="utility-btn reset-btn"
+            onClick={resetCube}
+            disabled={isScrambling}
+          >
+            Reset
+          </button>
+          <button 
+            className="utility-btn debug-btn"
+            onClick={logCubeState}
+            disabled={isScrambling}
+          >
+            Log State
+          </button>
+        </div>
+        
         <div className="button-grid">
           {moves.map((move) => (
             <button 
