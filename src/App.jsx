@@ -90,22 +90,37 @@ export default function App() {
     );
   };
 
+  const moves = [
+    { name: 'U', axis: 'y', layer: 1, angle: -Math.PI / 2 },
+    { name: "U'", axis: 'y', layer: 1, angle: Math.PI / 2 },
+    { name: 'D', axis: 'y', layer: -1, angle: Math.PI / 2 },
+    { name: "D'", axis: 'y', layer: -1, angle: -Math.PI / 2 },
+    { name: 'R', axis: 'x', layer: 1, angle: -Math.PI / 2 },
+    { name: "R'", axis: 'x', layer: 1, angle: Math.PI / 2 },
+    { name: 'L', axis: 'x', layer: -1, angle: Math.PI / 2 },
+    { name: "L'", axis: 'x', layer: -1, angle: -Math.PI / 2 },
+    { name: 'F', axis: 'z', layer: 1, angle: -Math.PI / 2 },
+    { name: "F'", axis: 'z', layer: 1, angle: Math.PI / 2 },
+    { name: 'B', axis: 'z', layer: -1, angle: Math.PI / 2 },
+    { name: "B'", axis: 'z', layer: -1, angle: -Math.PI / 2 },
+  ];
+
   return (
-    <div className="app-container">
-      {/* Cleaned control overlay using CSS classes */}
+    <div className='app-container'>
+      {/* Dynamic control panel */}
       <div className="controls-container">
-        <button 
-          className="control-btn"
-          onClick={() => rotateLayer('y', 1, -Math.PI / 2)} // Rotate U (Up) Clockwise
-        >
-          U (Top Clockwise)
-        </button>
-        <button 
-          className="control-btn"
-          onClick={() => rotateLayer('y', 1, Math.PI / 2)} // Rotate U' (Up Counter-Clockwise)
-        >
-          U' (Top Counter-Clockwise)
-        </button>
+        <h3 className="controls-title">Controls</h3>
+        <div className="button-grid">
+          {moves.map((move) => (
+            <button 
+              key={move.name}
+              className="control-btn"
+              onClick={() => rotateLayer(move.axis, move.layer, move.angle)}
+            >
+              {move.name}
+            </button>
+          ))}
+        </div>
       </div>
 
       <Canvas camera={{ position: [5, 5, 5], fov: 45 }}>
