@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Canvas } from '@react-three/fiber';
+import { useState, useRef, useEffect } from 'react';
+import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
 import * as THREE from 'three';
 import './App.css';
@@ -28,17 +28,47 @@ const LOCAL_NORMALS = [
   new THREE.Vector3(0, 0, -1),  // Index 5: Back (Blue)
 ];
 
-// Cubie component using a Transformation Matrix
-function Cubie({ matrix }) {
-  const meshRef = React.useRef();
+// Cubie component using a Transformation Matrix with active animation support
+function Cubie({ matrix, animationData, isAnimated }) {
+  const meshRef = useRef();
+  const currentAngleRef = useRef(0);
 
-  // Apply the 3D transformation matrix directly to the mesh on every render
-  React.useEffect(() => {
-    if (meshRef.current) {
+  // Sync mesh with static matrix when animation is NOT active
+  useEffect(() => {
+    if (meshRef.current && !animationData.active) {
       meshRef.current.matrix.copy(matrix);
-      meshRef.current.matrixAutoUpdate = false; // Tell Three.js we handle the matrix manually
+      meshRef.current.matrixAutoUpdate = false;
+      currentAngleRef.current = 0; // Reset internal rotation tracker
     }
-  }, [matrix]);
+  }, [matrix, animationData.active]);
+
+  // Handle smooth rotation frame-by-frame if this cubie is part of the moving layer
+  useFrame((state, delta) => {
+    if (!animationData.active || !isAnimated || !meshRef.current) return;
+
+    const speed = 8; // Animation speed multiplier
+    const targetAngle = animationData.angle;
+    const step = speed * delta;
+    
+    const diff = targetAngle - currentAngleRef.current;
+    let nextStepAngle = Math.sign(diff) * step;
+
+    // Prevent overshooting the target angle
+    if (Math.abs(diff) < step) {
+      nextStepAngle = diff;
+    }
+
+    currentAngleRef.current += nextStepAngle;
+
+    // Create incremental rotation matrix
+    const incrementalRot = new THREE.Matrix4();
+    if (animationData.axis === 'y') incrementalRot.makeRotationY(nextStepAngle);
+    if (animationData.axis === 'x') incrementalRot.makeRotationX(nextStepAngle);
+    if (animationData.axis === 'z') incrementalRot.makeRotationZ(nextStepAngle);
+
+    // Multiply the mesh matrix directly for GPU rendering
+    meshRef.current.matrix.premultiply(incrementalRot);
+  });
 
   return (
     <mesh ref={meshRef}>
@@ -76,6 +106,17 @@ export default function App() {
 
   const [cubies, setCubies] = useState(generateSolvedCube);
   const [isScrambling, setIsScrambling] = useState(false);
+  const [logs, setLogs] = useState([{ text: 'System initialized. Cube ready.', type: 'system' }]);
+  const logStreamEndRef = useRef(null);
+
+  // Animation state tracker
+  const [animationData, setAnimationData] = useState({
+    active: false,
+    axis: 'y',
+    layer: 1,
+    angle: 0,
+    entire: false,
+  });
 
   // Define all official Rubik's Cube moves
   const moves = [
@@ -93,48 +134,104 @@ export default function App() {
     { name: "B'", axis: 'z', layer: -1, angle: -Math.PI / 2 },
   ];
 
-  // Rotate the entire cube around an axis (Fixed version)
-  const rotateEntireCube = (axis, angle) => {
-    setCubies((prevCubies) =>
-      prevCubies.map((cubie) => {
-        const rotationMatrix = new THREE.Matrix4();
-        if (axis === 'y') rotationMatrix.makeRotationY(angle);
-        if (axis === 'x') rotationMatrix.makeRotationX(angle);
-        if (axis === 'z') rotationMatrix.makeRotationZ(angle);
-
-        const newMatrix = cubie.matrix.clone();
-        newMatrix.premultiply(rotationMatrix);
-
-        return {
-          ...cubie,
-          matrix: newMatrix,
-        };
-      })
-    );
+  // Helper to append on-screen logs
+  const addLog = (text, type = 'action') => {
+    setLogs((prev) => [...prev, { text, type }]);
   };
 
-  // Rotate a specific layer around an axis
-  const rotateLayer = (axis, layerValue, angle) => {
+  // Auto-scroll logs to bottom when a new log arrives
+  useEffect(() => {
+    if (logStreamEndRef.current) {
+      logStreamEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [logs]);
+
+  // Trigger layer animation
+  const animateLayer = (axis, layerValue, angle, moveName) => {
+    if (animationData.active || isScrambling) return;
+    addLog(`Move executed: ${moveName}`);
+    setAnimationData({
+      active: true,
+      axis,
+      layer: layerValue,
+      angle,
+      entire: false,
+    });
+  };
+
+  // Trigger entire cube animation
+  const animateEntireCube = (axis, angle, label) => {
+    if (animationData.active || isScrambling) return;
+    addLog(`Rotated entire cube: ${label}`, 'system');
+    setAnimationData({
+      active: true,
+      axis,
+      layer: 0,
+      angle,
+      entire: true,
+    });
+  };
+
+  // Check if a specific cubie should animate during the current active animation
+  const checkIsAnimated = (cubie) => {
+    if (!animationData.active) return false;
+    if (animationData.entire) return true;
+
+    const currentPos = new THREE.Vector3();
+    currentPos.setFromMatrixPosition(cubie.matrix);
+    const currentCoordOnAxis = currentPos[animationData.axis];
+    return Math.abs(currentCoordOnAxis - animationData.layer) < 0.1;
+  };
+
+  // Finalize matrix positions when the transition completes
+  // This triggers automatically after the animation time runs out
+  useEffect(() => {
+    if (!animationData.active) return;
+
+    const duration = 1000 / 8; // 1000ms divided by our frame-rate speed
+    const timer = setTimeout(() => {
+      const finalRotationMatrix = new THREE.Matrix4();
+      if (animationData.axis === 'y') finalRotationMatrix.makeRotationY(animationData.angle);
+      if (animationData.axis === 'x') finalRotationMatrix.makeRotationX(animationData.angle);
+      if (animationData.axis === 'z') finalRotationMatrix.makeRotationZ(animationData.angle);
+
+      setCubies((prevCubies) =>
+        prevCubies.map((cubie) => {
+          // Check if this specific cubie was animated (Inlined const to resolve eslint no-useless-assignment)
+          const currentPos = new THREE.Vector3();
+          currentPos.setFromMatrixPosition(cubie.matrix);
+          const currentCoordOnAxis = currentPos[animationData.axis];
+          
+          const wasAnimated = animationData.entire || Math.abs(currentCoordOnAxis - animationData.layer) < 0.1;
+
+          if (wasAnimated) {
+            const newMatrix = cubie.matrix.clone();
+            newMatrix.premultiply(finalRotationMatrix);
+            return { ...cubie, matrix: newMatrix };
+          }
+          return cubie;
+        })
+      );
+      setAnimationData({ active: false, axis: 'y', layer: 1, angle: 0, entire: false });
+    }, duration);
+
+    return () => clearTimeout(timer);
+  }, [animationData]); // animationData is now the only required dependency!
+
+  // Rotate a specific layer around an axis (for instant calculation during scramble)
+  const rotateLayerInstant = (axis, layerValue, angle) => {
     setCubies((prevCubies) =>
       prevCubies.map((cubie) => {
-        // Extract current position from the cubie's matrix
         const currentPos = new THREE.Vector3();
         currentPos.setFromMatrixPosition(cubie.matrix);
-
-        // Check if the cubie belongs to the target layer (with tolerance for floating-point errors)
         const currentCoordOnAxis = currentPos[axis];
         if (Math.abs(currentCoordOnAxis - layerValue) < 0.1) {
-          
-          // Create rotation matrix around the specified axis
           const rotationMatrix = new THREE.Matrix4();
           if (axis === 'y') rotationMatrix.makeRotationY(angle);
           if (axis === 'x') rotationMatrix.makeRotationX(angle);
           if (axis === 'z') rotationMatrix.makeRotationZ(angle);
 
-          // Clone the existing matrix to avoid mutating state directly
           const newMatrix = cubie.matrix.clone();
-          
-          // To rotate around the world center (0,0,0), we pre-multiply the rotation
           newMatrix.premultiply(rotationMatrix);
 
           return {
@@ -142,7 +239,6 @@ export default function App() {
             matrix: newMatrix,
           };
         }
-
         return cubie;
       })
     );
@@ -150,8 +246,9 @@ export default function App() {
 
   // Function to scramble the cube with a sequence of random moves
   const scrambleCube = () => {
-    if (isScrambling) return; // Prevent multiple scramble triggers
+    if (isScrambling || animationData.active) return;
     setIsScrambling(true);
+    addLog('Starting auto-scramble (20 random moves)...', 'system');
 
     const scrambleLength = 20; // Standard scramble length
     let currentStep = 0;
@@ -160,21 +257,23 @@ export default function App() {
       if (currentStep >= scrambleLength) {
         clearInterval(interval);
         setIsScrambling(false);
+        addLog('Scramble sequence finished.', 'system');
         return;
       }
 
       // Pick a random move from our moves array
       const randomMove = moves[Math.floor(Math.random() * moves.length)];
-      rotateLayer(randomMove.axis, randomMove.layer, randomMove.angle);
+      rotateLayerInstant(randomMove.axis, randomMove.layer, randomMove.angle);
 
       currentStep++;
-    }, 150); // Delay between moves in milliseconds
+    }, 80); // Delay between moves in milliseconds
   };
 
   // Reset function to set the cube back to the solve state
   const resetCube = () => {
-    if (isScrambling) return;
+    if (isScrambling || animationData.active) return;
     setCubies(generateSolvedCube());
+    addLog('Cube reset to solved state.', 'system');
   };
 
   // Modern state reader converting 3D matrix rotations into 2D color representation
@@ -221,82 +320,139 @@ export default function App() {
       return FACE_COLORS[bestMatchIndex];
     };
 
-    // Log the colors for the Up (U) face as a quick demo
-    const upFaceColors = faceStates.U.map(cubie => getFaceColor(cubie.rot, GLOBAL_DIRECTIONS.U));
-    console.log("UP Face Colors (Y=1):", upFaceColors);
+    // Helper to sort face cubies into a structured 3x3 grid (top-left to bottom-right)
+    const sortFaceGrid = (faceName, cubiesList) => {
+      let sorted = [...cubiesList];
+      
+      if (faceName === 'U') { // Looking from top (Z is rows, X is cols)
+        sorted.sort((a, b) => b.pos.z - a.pos.z || a.pos.x - b.pos.x);
+      } else if (faceName === 'D') { // Looking from bottom
+        sorted.sort((a, b) => a.pos.z - b.pos.z || a.pos.x - b.pos.x);
+      } else if (faceName === 'F') { // Looking from front (Y is rows, X is cols)
+        sorted.sort((a, b) => b.pos.y - a.pos.y || a.pos.x - b.pos.x);
+      } else if (faceName === 'B') { // Looking from back
+        sorted.sort((a, b) => b.pos.y - a.pos.y || b.pos.x - a.pos.x);
+      } else if (faceName === 'R') { // Looking from right (Y is rows, Z is cols)
+        sorted.sort((a, b) => b.pos.y - a.pos.y || b.pos.z - a.pos.z);
+      } else if (faceName === 'L') { // Looking from left
+        sorted.sort((a, b) => b.pos.y - a.pos.y || a.pos.z - b.pos.z);
+      }
+
+      return sorted.map(cubie => getFaceColor(cubie.rot, GLOBAL_DIRECTIONS[faceName]));
+    };
+
+    const finalState = {};
+    Object.keys(faceStates).forEach((face) => {
+      finalState[face] = sortFaceGrid(face, faceStates[face]);
+    });
+
+    // Log the colors for the Up (U) face as a quick demo on-screen
+    addLog(`UP Face Colors: [${finalState.U.join(', ')}]`, 'system');
+    console.log("Full 2D State Projection:", finalState);
   };
 
   return (
     <div className='app-container'>
-      {/* Dynamic control panel */}
-      <div className="controls-container">
-        <h3 className="controls-title">Controls</h3>
-
-        {/* Scramble Button */}
-        <button
-          className='scramble-btn'
-          onClick={scrambleCube}
-          disabled={isScrambling}
-        >
-          {isScrambling ? 'Scrambling...' : 'Scramble Cube'}
-        </button>
-
-        {/* New utility buttons group */}
-        <div className="utility-buttons">
-          <button 
-            className="utility-btn reset-btn"
-            onClick={resetCube}
-            disabled={isScrambling}
-          >
-            Reset
-          </button>
-          <button 
-            className="utility-btn debug-btn"
-            onClick={logCubeState}
-            disabled={isScrambling}
-          >
-            Log State
-          </button>
+      {/* Modern Glassmorphic Sidebar Menu */}
+      <div className="sidebar-menu">
+        <div className="menu-header">
+          <div className="logo-container">
+            {/* Elegant CSS 3D Cube Logo */}
+            <div className="cube-logo">
+              <div className="cube-face face-top"></div>
+              <div className="cube-face face-front"></div>
+              <div className="cube-face face-right"></div>
+            </div>
+            <div>
+              <h1 className="menu-title">Rubik's AI</h1>
+              <p className="menu-subtitle">3D Solver Project</p>
+            </div>
+          </div>
         </div>
 
-        {/* New section for entire cube rotations */}
-        <h4 className="section-title">Rotate Cube</h4>
-        <div className="utility-buttons">
-          <button 
-            className="utility-btn rotate-all-btn"
-            onClick={() => rotateEntireCube('y', Math.PI / 2)}
-            disabled={isScrambling}
+        <div className="menu-content">
+          {/* Scramble Button */}
+          <button
+            className='scramble-btn'
+            onClick={scrambleCube}
+            disabled={isScrambling || animationData.active}
           >
-            Rotate Y
+            {isScrambling ? 'Scrambling...' : 'Scramble Cube'}
           </button>
-          <button 
-            className="utility-btn rotate-all-btn"
-            onClick={() => rotateEntireCube('x', Math.PI / 2)}
-            disabled={isScrambling}
-          >
-            Rotate X
-          </button>
-          <button 
-            className="utility-btn rotate-all-btn"
-            onClick={() => rotateEntireCube('z', Math.PI / 2)}
-            disabled={isScrambling}
-          >
-            Rotate Z
-          </button>
-        </div>
 
-        <h4 className="section-title">Layer Moves</h4>
-        <div className="button-grid">
-          {moves.map((move) => (
+          {/* New utility buttons group */}
+          <div className="utility-buttons">
             <button 
-              key={move.name}
-              className="control-btn"
-              onClick={() => rotateLayer(move.axis, move.layer, move.angle)}
-              disabled={isScrambling} // Disable manual moves during scramble
+              className="utility-btn reset-btn"
+              onClick={resetCube}
+              disabled={isScrambling || animationData.active}
             >
-              {move.name}
+              Reset
             </button>
+            <button 
+              className="utility-btn solve-btn"
+              onClick={logCubeState}
+              disabled={isScrambling || animationData.active}
+            >
+              Log State
+            </button>
+          </div>
+
+          {/* New section for entire cube rotations */}
+          <h4 className="section-title">Rotate Cube</h4>
+          <div className="utility-buttons">
+            <button 
+              className="utility-btn rotate-all-btn"
+              onClick={() => animateEntireCube('y', Math.PI / 2, 'Y Axis')}
+              disabled={isScrambling || animationData.active}
+            >
+              Rotate Y
+            </button>
+            <button 
+              className="utility-btn rotate-all-btn"
+              onClick={() => animateEntireCube('x', Math.PI / 2, 'X Axis')}
+              disabled={isScrambling || animationData.active}
+            >
+              Rotate X
+            </button>
+            <button 
+              className="utility-btn rotate-all-btn"
+              onClick={() => animateEntireCube('z', Math.PI / 2, 'Z Axis')}
+              disabled={isScrambling || animationData.active}
+            >
+              Rotate Z
+            </button>
+          </div>
+
+          <h4 className="section-title">Layer Moves</h4>
+          <div className="button-grid">
+            {moves.map((move) => (
+              <button 
+                key={move.name}
+                className="control-btn"
+                onClick={() => animateLayer(move.axis, move.layer, move.angle, move.name)}
+                disabled={isScrambling || animationData.active} // Disable manual moves during scramble
+              >
+                {move.name}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* On-screen Log Console */}
+      <div className="log-panel">
+        <div className="log-title-container">
+          <h4 className="log-panel-title">Console Log</h4>
+          <button className="clear-log-btn" onClick={() => setLogs([])}>Clear</button>
+        </div>
+        <div className="log-stream">
+          {logs.map((log, index) => (
+            <div key={index} className={`log-entry log-entry-${log.type}`}>
+              &gt; {log.text}
+            </div>
           ))}
+          <div ref={logStreamEndRef} />
         </div>
       </div>
 
@@ -305,11 +461,15 @@ export default function App() {
         <directionalLight position={[10, 10, 10]} intensity={1.5} />
         <directionalLight position={[-10, -10, -10]} intensity={0.5} />
 
-        <group>
-          {cubies.map((cubie) => (
-            <Cubie key={cubie.id} matrix={cubie.matrix} />
-          ))}
-        </group>
+        {/* Render all 27 cubies flatly in a single array. No group unmounting! */}
+        {cubies.map((cubie) => (
+          <Cubie 
+            key={cubie.id} 
+            matrix={cubie.matrix} 
+            animationData={animationData} 
+            isAnimated={checkIsAnimated(cubie)}
+          />
+        ))}
 
         <OrbitControls enableZoom={true} />
       </Canvas>

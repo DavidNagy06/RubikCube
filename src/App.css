@@ -1,181 +1,277 @@
-/* App.css - Styles for the Rubik's Cube app */
+/* App.css - Modern Glassmorphism UI */
 
 .app-container {
   width: 100vw;
   height: 100vh;
   position: relative;
-  background-color: #1a1a1a;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background-color: #0f172a; /* Deeper dark blue-gray */
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  overflow: hidden;
 }
 
-.controls-container {
+/* Sidebar Menu styling */
+.sidebar-menu {
   position: absolute;
-  top: 20px;
-  left: 20px;
+  top: 0;
+  left: 0;
+  width: 280px;
+  height: 100vh;
   z-index: 10;
-  background-color: rgba(30, 30, 30, 0.85);
-  padding: 15px;
-  border-radius: 10px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(4px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: white;
-  width: 220px;
+  background: rgba(15, 23, 42, 0.8);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-right: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 30px 20px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 10px 0 30px rgba(0, 0, 0, 0.5);
+  box-sizing: border-box;
 }
 
-.controls-title {
-  margin-top: 0;
-  margin-bottom: 12px;
-  font-size: 16px;
-  text-align: center;
+.menu-header {
+  margin-bottom: 30px;
+}
+
+.menu-title {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 800;
+  background: linear-gradient(135deg, #00f2fe 0%, #4facfe 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  letter-spacing: -0.5px;
+}
+
+.menu-subtitle {
+  margin: 5px 0 0 0;
+  font-size: 11px;
+  text-transform: uppercase;
+  color: #64748b;
+  letter-spacing: 1.5px;
+}
+
+/* Custom Scrollbar for Menu if it overflows */
+.menu-content {
+  flex: 1;
+  overflow-y: auto;
+  padding-right: 5px;
+}
+
+.menu-content::-webkit-scrollbar {
+  width: 4px;
+}
+.menu-content::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 2px;
+}
+
+.section-title {
+  margin-top: 25px;
+  margin-bottom: 10px;
+  font-size: 11px;
+  font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 1px;
-  color: #00d2ff;
-}
-
-.button-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr); /* 2 columns grid */
+  color: #94a3b8;
+  display: flex;
+  align-items: center;
   gap: 8px;
 }
 
-.control-btn {
-  padding: 10px;
-  font-size: 15px;
-  font-weight: bold;
-  color: #ffffff;
-  background-color: #2c3e50;
-  border: 2px solid #34495e;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: all 0.15s ease-in-out;
+.section-title::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.1);
 }
 
-/* Hover effect */
-.control-btn:hover {
-  background-color: #00d2ff;
-  border-color: #00b4db;
-  color: #1a1a1a;
-  transform: translateY(-2px);
-}
-
-/* Active (click) effect */
-.control-btn:active {
-  transform: translateY(1px);
-}
-
-/* Scramble Button Specific Styles */
+/* Buttons Styling */
 .scramble-btn {
   width: 100%;
   padding: 12px;
-  margin-bottom: 15px;
-  font-size: 15px;
-  font-weight: bold;
-  color: #1a1a1a;
-  background-color: #00d2ff;
+  font-size: 14px;
+  font-weight: 700;
+  color: #0f172a;
+  background: linear-gradient(135deg, #00f2fe 0%, #4facfe 100%);
   border: none;
-  border-radius: 6px;
+  border-radius: 8px;
   cursor: pointer;
-  transition: all 0.2s ease-in-out;
-  box-shadow: 0 4px 10px rgba(0, 210, 255, 0.3);
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 15px rgba(0, 242, 254, 0.3);
   text-transform: uppercase;
   letter-spacing: 0.5px;
+  margin-bottom: 15px;
 }
 
 .scramble-btn:hover:not(:disabled) {
-  background-color: #00b4db;
   transform: translateY(-2px);
-  box-shadow: 0 6px 15px rgba(0, 210, 255, 0.5);
+  box-shadow: 0 6px 20px rgba(0, 242, 254, 0.5);
 }
 
 .scramble-btn:active:not(:disabled) {
   transform: translateY(1px);
 }
 
-.scramble-btn:disabled {
-  background-color: #555555;
-  color: #888888;
-  cursor: not-allowed;
-  box-shadow: none;
-}
-
-/* Update control-btn to look disabled when scrambling */
-.control-btn:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-  transform: none !important;
-}
-
-/* Utility buttons (Reset & Log State) container */
 .utility-buttons {
   display: flex;
-  gap: 8px;
+  gap: 10px;
   margin-bottom: 15px;
 }
 
 .utility-btn {
   flex: 1;
   padding: 10px;
-  font-size: 14px;
-  font-weight: bold;
+  font-size: 13px;
+  font-weight: 600;
   border: none;
-  border-radius: 6px;
+  border-radius: 8px;
   cursor: pointer;
-  transition: all 0.15s ease-in-out;
+  transition: all 0.2s ease;
   color: white;
 }
 
 .reset-btn {
-  background-color: #e74c3c;
-  box-shadow: 0 4px 6px rgba(231, 76, 60, 0.2);
+  background-color: #ef4444;
+  box-shadow: 0 4px 10px rgba(239, 68, 68, 0.2);
 }
 
 .reset-btn:hover:not(:disabled) {
-  background-color: #c0392b;
+  background-color: #dc2626;
   transform: translateY(-2px);
 }
 
-.debug-btn {
-  background-color: #9b59b6;
-  box-shadow: 0 4px 6px rgba(155, 89, 182, 0.2);
+.solve-btn {
+  background-color: #f59e0b;
+  box-shadow: 0 4px 10px rgba(245, 158, 11, 0.2);
 }
 
-.debug-btn:hover:not(:disabled) {
-  background-color: #8e44ad;
+.solve-btn:hover:not(:disabled) {
+  background-color: #d97706;
   transform: translateY(-2px);
 }
 
-.utility-btn:active:not(:disabled) {
-  transform: translateY(1px);
-}
-
-.utility-btn:disabled {
-  background-color: #555555;
-  color: #888888;
-  cursor: not-allowed;
-  box-shadow: none;
-}
-
-/* Section titles inside the control panel */
-.section-title {
-  margin-top: 15px;
-  margin-bottom: 8px;
-  font-size: 12px;
-  text-align: left;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: #a0a0a0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  padding-bottom: 3px;
-}
-
-/* Rotate Entire Cube buttons */
 .rotate-all-btn {
-  background-color: #27ae60;
-  box-shadow: 0 4px 6px rgba(39, 174, 96, 0.2);
+  background-color: #10b981;
+  box-shadow: 0 4px 10px rgba(16, 185, 129, 0.2);
 }
 
 .rotate-all-btn:hover:not(:disabled) {
-  background-color: #2ecc71;
+  background-color: #059669;
   transform: translateY(-2px);
+}
+
+.button-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+
+.control-btn {
+  padding: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #cbd5e1;
+  background-color: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.control-btn:hover:not(:disabled) {
+  background-color: #334155;
+  color: white;
+  border-color: #475569;
+}
+
+.control-btn:disabled, .utility-btn:disabled, .scramble-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+/* On-screen Log Console */
+.log-panel {
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
+  width: 320px;
+  height: 200px;
+  z-index: 10;
+  background: rgba(15, 23, 42, 0.9);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(0, 210, 255, 0.2);
+  border-radius: 8px;
+  padding: 15px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.6);
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+}
+
+.log-title-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding-bottom: 5px;
+}
+
+.log-panel-title {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #00d2ff;
+  letter-spacing: 1px;
+}
+
+.clear-log-btn {
+  background: none;
+  border: none;
+  color: #64748b;
+  font-size: 10px;
+  cursor: pointer;
+  text-transform: uppercase;
+  font-weight: bold;
+}
+
+.clear-log-btn:hover {
+  color: #ef4444;
+}
+
+.log-stream {
+  flex: 1;
+  overflow-y: auto;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 11px;
+  color: #a7f3d0; /* Soft terminal green */
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-right: 5px;
+}
+
+.log-stream::-webkit-scrollbar {
+  width: 4px;
+}
+.log-stream::-webkit-scrollbar-thumb {
+  background: rgba(0, 210, 255, 0.3);
+  border-radius: 2px;
+}
+
+.log-entry {
+  line-height: 1.4;
+  word-break: break-all;
+}
+
+.log-entry-system {
+  color: #38bdf8; /* Blue for system logs */
+}
+
+.log-entry-action {
+  color: #fbbf24; /* Yellow for user actions */
 }
