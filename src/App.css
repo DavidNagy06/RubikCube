@@ -275,3 +275,58 @@
 .log-entry-action {
   color: #fbbf24; /* Yellow for user actions */
 }
+
+/* Logo 3D Container */
+.logo-container {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin-bottom: 25px;
+}
+
+/* CSS-only 3D Isometric Cube */
+.cube-logo {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  transform-style: preserve-3d;
+  transform: rotateX(-30deg) rotateY(45deg);
+  animation: floatLogo 4s ease-in-out infinite alternate;
+}
+
+@keyframes floatLogo {
+  0% {
+    transform: rotateX(-30deg) rotateY(45deg) translateY(0px);
+  }
+  100% {
+    transform: rotateX(-30deg) rotateY(225deg) translateY(-5px);
+  }
+}
+
+.cube-face {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  border: 1.5px solid #0f172a;
+  box-sizing: border-box;
+  opacity: 0.9;
+}
+
+/* Isometric 3D Face placement */
+.face-top {
+  background: #00f2fe;
+  transform: rotateX(90deg) translateZ(10px);
+  box-shadow: 0 0 10px rgba(0, 242, 254, 0.5);
+}
+
+.face-front {
+  background: #4facfe;
+  transform: translateZ(10px);
+  box-shadow: 0 0 10px rgba(79, 172, 254, 0.5);
+}
+
+.face-right {
+  background: #10b981;
+  transform: rotateY(90deg) translateZ(10px);
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.5);
+}
